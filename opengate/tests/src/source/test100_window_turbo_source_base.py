@@ -57,7 +57,7 @@ def build_collimator(sim, head, pin_radius_up=3.6, pin_radius_down=13.6):
     # kill_actor_outer.attached_to = "pinboard_outer"
 
 
-def build_crystal(sim, head, prj_name):
+def build_crystal(sim, head, output_prefix):
     world = sim.world
     gcm3 = gate.g4_units.g_cm3
     sim.volume_manager.material_database.add_material_weights(
@@ -91,17 +91,19 @@ def build_crystal(sim, head, prj_name):
         aux.name,
     ]
     hc.attached_to = ["head_crystal"]
+    hc.write_to_disk = False
     sc = sim.add_actor("DigitizerAdderActor", "Singles")
     sc.input_digi_collection = "Hits"
     sc.policy = "EnergyWeightedCentroidPosition"
     sc.group_volume = "head_crystal"
+    sc.output_filename = f"{output_prefix}_singles.root"
     proj = sim.add_actor("DigitizerProjectionActor", "Projection")
     proj.attached_to = "head_crystal"
     proj.input_digi_collections = ["Singles"]
     proj.spacing = [1.5 * mm, 1.5 * mm]
     proj.size = [100, 100]
     proj.origin_as_image_center = False
-    proj.output_filename = f"{prj_name}.mhd"
+    proj.output_filename = f"{output_prefix}.mhd"
     proj.detector_orientation_matrix = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
 
 
