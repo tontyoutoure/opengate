@@ -75,6 +75,7 @@ def build_crystal(sim, head, prj_name):
     head_crystal.material = "CsI"
     head_crystal.translation = [0, 69.5 * mm, 0]
     head_crystal.color = [0, 0, 1, 1]
+    aux = sim.activate_auxiliary_attribute("UnscatteredPrimaryAttribute", "unscattered")
     hc = sim.add_actor("DigitizerHitsCollectionActor", "Hits")
     hc.attributes = [
         "TotalEnergyDeposit",
@@ -87,6 +88,7 @@ def build_crystal(sim, head, prj_name):
         "ThreadID",
         "TrackID",
         "PreStepUniqueVolumeID",
+        aux.name,
     ]
     hc.attached_to = ["head_crystal"]
     sc = sim.add_actor("DigitizerAdderActor", "Singles")
