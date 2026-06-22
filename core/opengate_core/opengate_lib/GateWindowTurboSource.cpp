@@ -4,7 +4,7 @@
 #include "GateHelpersDict.h"
 #include "GateSingleParticleSourceWindowTurbo.h"
 #include "GateVSource.h"
-#include <G4Colour.hh>
+#include <G4Color.hh>
 #include <G4Event.hh>
 #include <G4ExceptionSeverity.hh>
 #include <G4Run.hh>
@@ -200,31 +200,47 @@ void GateWindowTurboSource::GetWindowVertex(G4ThreeVector &pos1,
   pos4 = rot * pos4;
 }
 
-void GateWindowTurboSource::PendingVisualizeWindowWithColourName(
-    G4String colour_name, G4double width, int run_id) {
-  G4Colour colour;
-  G4Colour::GetColour(colour_name, colour);
-  PendingVisualizeWindow(colour, width, run_id);
+namespace {
+G4Color GetColor(const py::handle &color_py) {
+  if (py::isinstance<py::str>(color_py)) {
+    G4Color color;
+    const std::string color_str = color_py.cast<std::string>();
+    G4Color::GetColor(color_str, color);
+    return color;
+  }
+
+  const auto rgba = color_py.cast<std::vector<G4double>>();
+
+  if (rgba.size() == 3)
+    return {rgba[0], rgba[1], rgba[2], 1.0};
+  return {rgba[0], rgba[1], rgba[2], rgba[3]};
+}
+std::vector<G4Color> DictGetVecColor(py::dict &user_info,
+                                     const std::string &key) {
+  std::vector<G4Color> l;
+  auto color_list = py::list(user_info[key.c_str()]);
+  for (const auto color : color_list) {
+    l.push_back(GetColor(color));
+  }
+  return l;
 }
 
-void GateWindowTurboSource::PendingVisualizeWindowWithRGBA(
-    std::vector<G4double> rgba, G4double width, int run_id) {
-  G4Colour colour(rgba[0], rgba[1], rgba[2], rgba[3]);
-  PendingVisualizeWindow(colour, width, run_id);
+} // namespace
+
+void GateWindowTurboSource::InitializeVisualization(py::dict puser_info) {
+  GateGenericSource::InitializeVisualization(puser_info);
+  auto user_info = py::dict(puser_info["visualization"]);
+  visualization_window_run_id = DictGetVecInt(user_info, "window_run_id");
+  visualization_window_width = DictGetVecDouble(user_info, "window_width");
+  visualization_window_color = DictGetVecColor(user_info, "window_color");
 }
 
-void GateWindowTurboSource::PendingVisualizeWindow(G4Colour colour,
-                                                   G4double width, int run_id) {
-  visualization_window_color.push_back(colour);
-  visualization_window_width.push_back(width);
-  visualization_window_run_id.push_back(run_id);
-}
-void GateWindowTurboSource::VisualizeOneWindow(G4Colour colour, G4double width,
+void GateWindowTurboSource::VisualizeOneWindow(G4Color color, G4double width,
                                                int run_id) const {
   G4ThreeVector pos1, pos2, pos3, pos4;
   GetWindowVertex(pos1, pos2, pos3, pos4, run_id);
 
-  VisWindow *window = new VisWindow(pos1, pos2, pos3, pos4, colour, width);
+  VisWindow *window = new VisWindow(pos1, pos2, pos3, pos4, color, width);
   G4VModel *model =
       new G4CallbackModel<GateWindowTurboSource::VisWindow>(window);
   model->SetType("Turbo Window");
@@ -257,7 +273,7 @@ GateWindowTurboSource::VisWindow::VisWindow(const G4Vector3D &pos1,
                                             const G4Vector3D &pos2,
                                             const G4Vector3D &pos3,
                                             const G4Vector3D &pos4,
-                                            G4Colour colour, G4double width) {
+                                            G4Color color, G4double width) {
 
   fPolyline.push_back(pos1);
   fPolyline.push_back(pos3);
@@ -266,7 +282,7 @@ GateWindowTurboSource::VisWindow::VisWindow(const G4Vector3D &pos1,
   fPolyline.push_back(pos1);
   G4VisAttributes va;
   va.SetLineWidth(width);
-  va.SetColour(colour);
+  va.SetColor(color);
   fPolyline.SetVisAttributes(va);
 }
 

@@ -51,9 +51,6 @@ public:
   unsigned long GetTotalSkippedEvents() const;
   unsigned long GetTotalZeroEvents() const;
   virtual void Visualize() const override;
-  virtual void RequestVisualization(
-      G4int count, py::object color,
-      G4double size); // color can be a string or a list of 4 doubles (RGBA)
 
 protected:
   //  We cannot use a std::unique_ptr
@@ -97,24 +94,16 @@ protected:
   // source, eg: needed for motion actor
   bool fDirectionRelativeToAttachedVolume;
 
-  // thread local structure
-  struct threadLocalGenericSource {
-    GateSingleParticleSource *fSPS = nullptr;
-    GateAcceptanceAngleManager *fAAManager = nullptr;
-    GateForcedDirectionManager *fFDManager = nullptr;
-    bool fInitConfine = false;
-    bool fInitGenericIon = false;
-    double fEffectiveEventTime = -1;
-    unsigned long fCurrentSkippedEvents = 0;
-    unsigned long fCurrentZeroEvents = 0;
-  };
-  G4Cache<threadLocalGenericSource> fThreadLocalDataGenericSource;
-
-  // sum of all threads
+  GateSingleParticleSource *fSPS = nullptr;
+  GateAcceptanceAngleManager *fAAManager = nullptr;
+  GateForcedDirectionManager *fFDManager = nullptr;
+  bool fInitConfine = false;
+  bool fInitGenericIon = false;
+  double fEffectiveEventTime = -1;
+  unsigned long fCurrentSkippedEvents = 0;
+  unsigned long fCurrentZeroEvents = 0;
   unsigned long fTotalSkippedEvents = 0;
   unsigned long fTotalZeroEvents = 0;
-
-  threadLocalGenericSource &GetThreadLocalDataGenericSource() const;
 
   // if confine is used, must be defined after the initialization
   // bool fInitConfine;
@@ -140,10 +129,12 @@ protected:
 
   virtual void InitializeEnergy(py::dict user_info);
 
+  virtual void InitializeVisualization(py::dict user_info);
+
   void UpdateActivity(double time) override;
 
   void UpdateEffectiveEventTime(double current_simulation_time,
-                                unsigned long skipped_particle) const;
+                                unsigned long skipped_particle);
 };
 
 #endif // GateGenericSource_h

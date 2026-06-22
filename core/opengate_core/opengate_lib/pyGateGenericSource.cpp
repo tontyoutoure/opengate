@@ -5,11 +5,8 @@
    See LICENSE.md for further details
    -------------------------------------------------- */
 
-#include <pybind11/pybind11.h>
-
-namespace py = pybind11;
-
 #include "GateGenericSource.h"
+#include <pybind11/pybind11.h>
 
 void init_GateGenericSource(py::module &m) {
 
@@ -22,6 +19,5 @@ void init_GateGenericSource(py::module &m) {
       .def("SetProbabilityCDF", &GateGenericSource::SetProbabilityCDF)
       .def("GetTotalSkippedEvents", &GateGenericSource::GetTotalSkippedEvents)
       .def("GetTotalZeroEvents", &GateGenericSource::GetTotalZeroEvents)
-      .def("SetTAC", &GateGenericSource::SetTAC)
-      .def("RequestVisualization", &GateGenericSource::RequestVisualization);
+      .def("SetTAC", &GateGenericSource::SetTAC);
 }

@@ -8,12 +8,12 @@
 #ifndef GateDoseActor_h
 #define GateDoseActor_h
 
-#include "G4Cache.hh"
-#include "G4EmCalculator.hh"
-#include "G4VPrimitiveScorer.hh"
 #include "GateSPRCache.h"
 #include "GateVActor.h"
-#include "itkImage.h"
+#include <G4Cache.hh>
+#include <G4EmCalculator.hh>
+#include <G4VPrimitiveScorer.hh>
+#include <itkImage.h>
 #include <memory>
 
 namespace py = pybind11;
@@ -79,6 +79,8 @@ public:
 
   void SetUncertaintyGoal(const double b) { fUncertaintyGoal = b; }
 
+  void SetTopVoxelsCount(const std::size_t b) { fTopVoxelsCount = b; }
+
   void SetThreshEdepPerc(const double b) { fThreshEdepPerc = b; }
 
   void SetOvershoot(const double b) { fOvershoot = b; }
@@ -96,7 +98,7 @@ public:
 
   void ind2sub(int index, Image3DType::IndexType &index3D);
 
-  double GetMaxValueOfImage(Image3DType::Pointer imageP);
+  double GetMeanOfHighestNValues(Image3DType::Pointer imageP);
   double ComputeMeanUncertainty();
 
   // The image is accessible on py side (shared by all threads)
@@ -147,6 +149,7 @@ public:
 
   // Option: set target statistical uncertainty for each run
   double fUncertaintyGoal;
+  std::size_t fTopVoxelsCount;
   double fThreshEdepPerc;
   double fOvershoot;
 
