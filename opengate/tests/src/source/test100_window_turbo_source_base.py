@@ -57,7 +57,7 @@ def build_collimator(sim, head, pin_radius_up=3.6, pin_radius_down=13.6):
     # kill_actor_outer.attached_to = "pinboard_outer"
 
 
-def build_crystal(sim, head, output_prefix):
+def build_crystal(sim, head, output_prefix, count_scatter=False):
     world = sim.world
     gcm3 = gate.g4_units.g_cm3
     sim.volume_manager.material_database.add_material_weights(
@@ -75,7 +75,6 @@ def build_crystal(sim, head, output_prefix):
     head_crystal.material = "CsI"
     head_crystal.translation = [0, 69.5 * mm, 0]
     head_crystal.color = [0, 0, 1, 1]
-    aux = sim.activate_auxiliary_attribute("UnscatteredPrimaryAttribute", "unscattered")
     hc = sim.add_actor("DigitizerHitsCollectionActor", "Hits")
     hc.attributes = [
         "TotalEnergyDeposit",
@@ -88,8 +87,22 @@ def build_crystal(sim, head, output_prefix):
         "ThreadID",
         "TrackID",
         "PreStepUniqueVolumeID",
-        aux.name,
     ]
+    if count_scatter:
+        aux_compton = sim.activate_auxiliary_attribute(
+            "ProcessDefinedStepInVolumeAttribute", "compton_count"
+        )
+        aux_compton.volume_name = "phantom"
+        aux_compton.process_name = "compt"
+        hc.attributes.append(aux_compton.name)
+
+        aux_rayleigh = sim.activate_auxiliary_attribute(
+            "ProcessDefinedStepInVolumeAttribute", "rayleigh_count"
+        )
+        aux_rayleigh.volume_name = "phantom"
+        aux_rayleigh.process_name = "Rayl"
+        hc.attributes.append(aux_rayleigh.name)
+
     hc.attached_to = ["head_crystal"]
     hc.write_to_disk = False
     sc = sim.add_actor("DigitizerAdderActor", "Singles")
@@ -108,7 +121,12 @@ def build_crystal(sim, head, output_prefix):
 
 
 def build_geometry(
-    sim, prj_name, pin_radius_up=3.6, pin_radius_down=13.6, head_y_pos=100
+    sim,
+    prj_name,
+    pin_radius_up=3.6,
+    pin_radius_down=13.6,
+    head_y_pos=100,
+    count_scatter=False,
 ):
     # head_y_pos is the distance between center of the collimator and the system center in y direction
     mm = gate.g4_units.mm
@@ -124,7 +142,7 @@ def build_geometry(
     head.color = [0, 1, 0, 0.05]
 
     build_collimator(sim, head, pin_radius_up, pin_radius_down)
-    build_crystal(sim, head, prj_name)
+    build_crystal(sim, head, prj_name, count_scatter)
 
 
 def calculate_profile(image_path):
