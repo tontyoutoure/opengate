@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import opengate as gate
-from opengate.tests import utility
+import uproot
+import SimpleITK as sitk
+
 import pathlib
 import numpy as np
 from box import Box
@@ -66,16 +68,40 @@ def initialize(duration=10):
     return sim
 
 
-def run_window_turbo_source(activity=1000000):
+def add_phantom(sim):
+    mm = gate.g4_units.mm
+    phantom = sim.add_volume("Tubs", "phantom")
+    phantom.rmin = 0
+    phantom.rmax = 100 * mm
+    phantom.dz = 100 * mm
+    phantom.material = "G4_WATER"
+    phantom.color = [0, 0, 1, 1]
+    phantom.translation = [0, -100 * mm, 0]
+    phantom.mother = "world"
+
+
+def run_window_turbo_source(ff=False, thread_count=4):
+    print("running with ff =", ff, "thread_count =", thread_count)
     Bq = gate.g4_units.Bq
     mm = gate.g4_units.mm
-    sim = initialize(80)
+    activity = 1e6
+    # sim = initialize(781.25)
+    sim = initialize(400)
+    if ff:
+        sim.g4_commands_before_init.append("/process/em/UseGeneralProcess false")
     sim.g4_verbose = False
-    sim.number_of_threads = 4
+    sim.number_of_threads = thread_count
     sim.random_seed = 1
     sim.progress_bar = False
     radius_down = 13.6
-    build_geometry(sim, paths.output / "window_turbo", pin_radius_down=radius_down)
+    build_geometry(
+        sim,
+        paths.output / f"window_turbo_ff_{ff}",
+        pin_radius_down=radius_down,
+        count_scatter=not ff,
+    )
+    add_phantom(sim)
+    sim.physics_manager.set_production_cut("phantom", "all", 1 * mm)
     source_back = sim.add_source("WindowTurboSource", "source_back")
     source_1 = sim.add_source("WindowTurboSource", "source_1")
     source_2 = sim.add_source("WindowTurboSource", "source_2")
@@ -94,7 +120,11 @@ def run_window_turbo_source(activity=1000000):
     source_3.direction = source_back.direction.copy()
     source_1.direction = source_back.direction.copy()
     change_source_parameters(source_back, source_1, source_2, source_3)
-    sim.run()
+    if ff:
+        ff_actor = sim.add_actor("GammaFreeFlightActor", "ff")
+        ff_actor.attached_to = "world"
+        ff_actor.exclude_volumes = ["head"]
+    sim.run(start_new_process=False)
     stats = sim.get_actor("Stats")
     print(stats)
     print("-" * 80)
@@ -110,14 +140,7 @@ def run_generic_source(job_count):
         build_geometry(sim, f"generic_{ijob}", count_scatter=True)
 
         mm = gate.g4_units.mm
-        phantom = sim.add_volume("Tubs", "phantom")
-        phantom.rmin = 0
-        phantom.rmax = 100 * mm
-        phantom.dz = 100 * mm
-        phantom.material = "G4_WATER"
-        phantom.color = [0, 0, 1, 1]
-        phantom.translation = [0, -100 * mm, 0]
-        phantom.mother = "world"
+        add_phantom(sim)
         sim.visu = False
         sim.visu_type = "qt"
         sim.number_of_threads = 32
@@ -141,37 +164,68 @@ def run_generic_source(job_count):
         print("-" * 80)
 
 
+def analyze_root(file):
+    with uproot.open(file) as f:
+        if "Singles" not in f:
+            return None
+        tree = f["Singles"]
+        tree_np = tree.arrays(library="np")
+        print(
+            "Weight stats:",
+            tree_np["Weight"].max(),
+            tree_np["Weight"].min(),
+            tree_np["Weight"].mean(),
+        )
+        print(tree_np.keys())
+
+
+def generate_prj_one(path):
+    with uproot.open(path) as file:
+        if "Singles" not in file:
+            return None, None
+        tree = file["Singles"]
+        tree_np = tree.arrays(library="np")
+        is_scatter = tree_np["compton_count"] + tree_np["rayleigh_count"] > 0
+        keys = tree.keys()
+        print(keys)
+        print(
+            max(tree_np["compton_count"]),
+            min(tree_np["compton_count"]),
+            tree_np["compton_count"].mean(),
+        )
+        print(
+            max(tree_np["rayleigh_count"]),
+            min(tree_np["rayleigh_count"]),
+            tree_np["rayleigh_count"].mean(),
+        )
+        x_scatter = tree_np["PostPosition_X"][is_scatter]
+        z_scatter = tree_np["PostPosition_Z"][is_scatter]
+        x_primary = tree_np["PostPosition_X"][~is_scatter]
+        z_primary = tree_np["PostPosition_Z"][~is_scatter]
+        prj_primary, _, _ = np.histogram2d(
+            z_primary, x_primary, bins=100, range=[[-75, 75], [-75, 75]]
+        )
+        prj_scatter, _, _ = np.histogram2d(
+            z_scatter, x_scatter, bins=100, range=[[-75, 75], [-75, 75]]
+        )
+    return prj_primary, prj_scatter
+
+
 def generate_prj_generic():
-    import uproot
     import glob
     import SimpleITK as sitk
 
     root_list = glob.glob("generic_*_singles.root")
     output_prj_primary = np.zeros((100, 100))
     output_prj_scatter = np.zeros((100, 100))
-    for filepath in root_list:
-        with uproot.open(filepath) as file:
-            if "Singles" not in file:
-                continue
-            tree = file["Singles"]
-            tree_np = tree.arrays(library="np")
-            keys = tree.keys()
-            is_scatter = tree_np["compton_count"] + tree_np["rayleigh_count"] > 0
-            # print(keys)
-            # print(max(tree_np["compton_count"]), min(tree_np["compton_count"]),tree_np["compton_count"].mean())
-            # print(max(tree_np["rayleigh_count"]), min(tree_np["rayleigh_count"]),tree_np["rayleigh_count"].mean())
-            x_scatter = tree_np["PostPosition_X"][is_scatter]
-            z_scatter = tree_np["PostPosition_Z"][is_scatter]
-            x_primary = tree_np["PostPosition_X"][~is_scatter]
-            z_primary = tree_np["PostPosition_Z"][~is_scatter]
-            prj_primary, _, _ = np.histogram2d(
-                x_primary, z_primary, bins=100, range=[[-75, 75], [-75, 75]]
-            )
-            prj_scatter, _, _ = np.histogram2d(
-                x_scatter, z_scatter, bins=100, range=[[-75, 75], [-75, 75]]
-            )
-            output_prj_primary += prj_primary
-            output_prj_scatter += prj_scatter
+    for ifile, filepath in enumerate(root_list):
+        prj_primary, prj_scatter = generate_prj_one(filepath)
+        if prj_primary is None or prj_scatter is None:
+            continue
+        output_prj_primary += prj_primary
+        output_prj_scatter += prj_scatter
+        if ifile > 1:
+            break
     image_output_primary = sitk.GetImageFromArray(output_prj_primary.astype(np.float32))
     image_output_scatter = sitk.GetImageFromArray(output_prj_scatter.astype(np.float32))
     image_output_primary.SetSpacing([1.5, 1.5])
@@ -183,7 +237,25 @@ def generate_prj_generic():
 if __name__ == "__main__":
     pathFile = pathlib.Path(__file__).parent.resolve()
     # run_generic_source(50)
-    generate_prj_generic()
+    # generate_prj_generic()
+    # run_window_turbo_source(True)
+    import sys
+
+    run_window_turbo_source(bool(int(sys.argv[1])), int(sys.argv[2]))
+
+    prj_primary, prj_scatter = generate_prj_one(
+        paths.output / "window_turbo_ff_False_singles.root"
+    )
+    image_primary = sitk.GetImageFromArray(prj_primary.astype(np.float32))
+    image_scatter = sitk.GetImageFromArray(prj_scatter.astype(np.float32))
+    image_primary.SetSpacing([1.5, 1.5])
+    image_scatter.SetSpacing([1.5, 1.5])
+    sitk.WriteImage(
+        image_primary, paths.output / "window_turbo_ff_False_primary_lazy_generated.mhd"
+    )
+    # sitk.WriteImage(image_scatter, paths.output / "window_turbo_ff_False_scatter.mhd")
+
+    # analyze_root(paths.output / "window_turbo_ff_singles.root")
 
     # run_window_turbo_source()
     # profile_wt = calculate_profile(paths.output / "window_turbo_counts.mhd")

@@ -80,8 +80,9 @@ def build_crystal(sim, head, output_prefix, count_scatter=False):
         "TotalEnergyDeposit",
         "KineticEnergy",
         "PostPosition",
-        "TrackCreatorProcess",
+        # "TrackCreatorProcess",
         "GlobalTime",
+        "Weight",
         "TrackVolumeName",
         "RunID",
         "ThreadID",
@@ -117,7 +118,30 @@ def build_crystal(sim, head, output_prefix, count_scatter=False):
     proj.size = [100, 100]
     proj.origin_as_image_center = False
     proj.output_filename = f"{output_prefix}.mhd"
+    proj.squared_counts.active = True
     proj.detector_orientation_matrix = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
+
+    if count_scatter:
+
+        sc_primary = sim.add_actor("DigitizerAdderActor", "SinglesPrimary")
+        sc_primary.input_digi_collection = "Hits"
+        sc_primary.policy = "EnergyWeightedCentroidPosition"
+        sc_primary.group_volume = "head_crystal"
+        sc_primary.output_filename = f"{output_prefix}_singles_primary.root"
+        F = gate.actors.filters.GateFilterBuilder()
+        filter_unscatter = (F.compton_count == 0) & (F.rayleigh_count == 0)
+        sc_primary.filter = filter_unscatter
+        proj_primary = sim.add_actor("DigitizerProjectionActor", "ProjectionPrimary")
+        proj_primary.attached_to = "head_crystal"
+        proj_primary.input_digi_collections = ["SinglesPrimary"]
+        proj_primary.spacing = [1.5 * mm, 1.5 * mm]
+        proj_primary.size = [100, 100]
+        proj_primary.origin_as_image_center = False
+        proj_primary.output_filename = f"{output_prefix}_primary.mhd"
+        proj_primary.squared_counts.active = True
+        proj_primary.detector_orientation_matrix = np.array(
+            [[1, 0, 0], [0, 0, -1], [0, 1, 0]]
+        )
 
 
 def build_geometry(
