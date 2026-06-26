@@ -448,7 +448,12 @@ class GenericSource(SourceBase):
         self._pos_validator.validate(self, "position")
         self._ene_validator.validate(self, "energy")
         self._dir_validator.validate(self, "direction")
-        self._visu_validator.validate(self, "visualization")
+        if self.simulation.visu:
+            if self.number_of_threads > 1:
+                fatal(
+                    "Visualization is not supported with multi-threading. Please set number_of_threads to 1."
+                )
+            self._visu_validator.validate(self, "visualization")
 
         if self.particle == "back_to_back":
             # force the energy to 511 keV
