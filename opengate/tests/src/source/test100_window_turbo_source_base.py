@@ -148,11 +148,11 @@ def compare_profiles(ref, test, tolerance=8.0, fig_name=None):
 
     if fig_name is not None:
         plt.figure(figsize=(10, 5))
-        plt.plot(ref / ref.sum(), label="reference")
-        plt.plot(test / test.sum(), label="test")
+        plt.plot(ref, label="reference")
+        plt.plot(test, label="test")
         plt.legend()
         plt.xlabel("Pixel")
-        plt.ylabel("Normalized counts")
+        plt.ylabel("Counts")
         plt.savefig(fig_name)
 
     return is_ok
