@@ -75,6 +75,7 @@ protected:
   const std::unordered_set<const G4LogicalVolume *> &
   GetKillVolumePointers() const;
   std::map<std::string, std::string> fAAParameters;
+  std::map<std::string, std::vector<G4double>> fWAParameters;
 
   std::vector<std::string> fKillVolumes;
   std::map<std::string, double> fBiasInformation;

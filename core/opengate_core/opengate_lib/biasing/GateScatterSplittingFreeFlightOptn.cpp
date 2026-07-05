@@ -19,6 +19,7 @@ GateScatterSplittingFreeFlightOptn::GateScatterSplittingFreeFlightOptn(
     const G4String &name, double *nbTracks)
     : G4VBiasingOperation(name), fSplittingFactor(1) {
   fAAManager = nullptr;
+  fWAManager = nullptr;
   fNbTracks = nbTracks;
   fUserTrackInformation = nullptr;
 }
@@ -49,6 +50,12 @@ void GateScatterSplittingFreeFlightOptn::InitializeAAManager(
     const std::map<std::string, std::string> &user_info) {
   fAAManager = new GateAcceptanceAngleManager();
   fAAManager->Initialize(user_info, true);
+}
+
+void GateScatterSplittingFreeFlightOptn::InitializeWAManager(
+    const std::map<std::string, std::vector<G4double>> &user_info) {
+  fWAManager = new GateWindowAcceptanceManager();
+  fWAManager->Initialize(user_info);
 }
 
 G4VParticleChange *GateScatterSplittingFreeFlightOptn::ApplyFinalStateBiasing(
@@ -120,7 +127,8 @@ GateScatterSplittingFreeFlightOptn::ApplyFinalStateBiasing_V1_PostStepDoIt(
 
     // Angular Acceptance rejection, we ignore the secondary if not ok
     const auto momentum = particle_change->GetProposedMomentumDirection();
-    if (!fAAManager->TestDirection(momentum)) {
+    if (!fAAManager->TestDirection(momentum) or
+        !fWAManager->TestIfAccept(position, momentum)) {
       continue;
     }
 
@@ -262,7 +270,8 @@ GateScatterSplittingFreeFlightOptn::ApplyFinalStateBiasing_V2_SampleSecondaries(
       delete sec;
 
     // D. Angular Acceptance
-    if (!fAAManager->TestDirection(newMom)) {
+    if (!fAAManager->TestDirection(newMom) or
+        !fWAManager->TestIfAccept(position, newMom)) {
       continue;
     }
 
@@ -497,7 +506,8 @@ GateScatterSplittingFreeFlightOptn::ApplyFinalStateBiasing_V3_SampleScatter(
     }
 
     // 2. Angular Acceptance Check (Optimized)
-    if (!fAAManager->TestDirection(newMom)) {
+    if (!fAAManager->TestDirection(newMom) or
+        !fWAManager->TestIfAccept(position, newMom)) {
       continue;
     }
 
@@ -599,7 +609,8 @@ GateScatterSplittingFreeFlightOptn::ApplyFinalStateBiasing_V4_SampleComptonOnly(
       continue;
 
     // Angular Acceptance Check (Optimized)
-    if (!fAAManager->TestDirection(newMom)) {
+    if (!fAAManager->TestDirection(newMom) or
+        !fWAManager->TestIfAccept(position, newMom)) {
       continue;
     }
 

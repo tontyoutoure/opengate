@@ -58,6 +58,11 @@ void GateScatterSplittingFreeFlightOptrActor::InitializeUserInfo(
 
   // Initialize the AA (Angular Acceptance) for the Compton operation
   fAAParameters = DictToMap(user_info["angular_acceptance"]);
+  py::dict wa = py::dict(user_info["window_acceptance"]);
+  for (auto item : wa) {
+    std::string key = py::str(item.first);
+    fWAParameters[key] = DictGetVecDouble(wa, key);
+  }
 
   // Kill volumes
   fKillVolumes = DictGetVecStr(user_info, "kill_interacting_in_volumes");
@@ -136,6 +141,8 @@ void GateScatterSplittingFreeFlightOptrActor::ConfigureForWorker() {
   // Initialize the AA (Angular Acceptance) for the Compton operation
   l.fComptonSplittingOperation->InitializeAAManager(fAAParameters);
   l.fRayleighSplittingOperation->InitializeAAManager(fAAParameters);
+  l.fComptonSplittingOperation->InitializeWAManager(fWAParameters);
+  l.fRayleighSplittingOperation->InitializeWAManager(fWAParameters);
   l.fComptonSplittingOperation->SetInvolvedBiasActor(this);
   l.fRayleighSplittingOperation->SetInvolvedBiasActor(this);
 

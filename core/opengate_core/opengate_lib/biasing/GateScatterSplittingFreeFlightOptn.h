@@ -14,6 +14,7 @@ Copyright (C): OpenGATE Collaboration
 #include "G4ParticleChange.hh"
 #include "G4VBiasingOperation.hh"
 #include "GateVBiasOptrActor.h"
+#include "GateWindowAcceptanceManager.h"
 
 class GateScatterSplittingFreeFlightOptn : public G4VBiasingOperation {
 public:
@@ -52,6 +53,8 @@ public:
 
   void SetSplittingFactor(G4int splittingFactor);
   void InitializeAAManager(const std::map<std::string, std::string> &user_info);
+  void InitializeWAManager(
+      const std::map<std::string, std::vector<G4double>> &user_info);
   void SetInvolvedBiasActor(GateVBiasOptrActor *actor) { fActor = actor; }
 
   // approximated do not use
@@ -64,6 +67,7 @@ public:
   G4int fSplittingFactor;
   G4ParticleChange fParticleChange;
   GateAcceptanceAngleManager *fAAManager;
+  GateWindowAcceptanceManager *fWAManager;
   double *fNbTracks;
   GateUserTrackInformation *fUserTrackInformation;
   GateVBiasOptrActor *fActor = nullptr;
