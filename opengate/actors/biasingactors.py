@@ -66,6 +66,19 @@ def generic_source_default_aa():
     )
 
 
+def default_window_acceptance():
+    return Box(
+        {
+            "plane_phi": [],
+            "plane_theta": [],
+            "a1": [],
+            "a2": [],
+            "b1": [],
+            "b2": [],
+        }
+    )
+
+
 class AngularAcceptanceValidator(UserInfoValidatorBase):
     """Validates the 'angular_acceptance' Box."""
 
@@ -105,6 +118,48 @@ class AngularAcceptanceValidator(UserInfoValidatorBase):
                 fatal(
                     f"In {context_name}: at least one of 'enable_intersection_check' or 'enable_angle_check' "
                     f"must be True when policy is {b.policy}."
+                )
+
+
+class WindowAcceptanceValidator(UserInfoValidatorBase):
+    __schema__ = set(default_window_acceptance().keys())
+
+    def validate_one_attr(self, b, attr_name: str, len=None):
+        attr = b[attr_name]
+        if not isinstance(attr, list):
+            fatal(f"window_acceptance.{attr_name} must be a list.")
+        if len is not None and len(attr) != len:
+            fatal(f"window_acceptance.{attr_name} must be a list of length {len}.")
+        for i, v in enumerate(attr):
+            if not isinstance(v, (int, float, np.number)):
+                fatal(f"window_acceptance.{attr_name}[{i}] must be a numeric value.")
+
+    def validate(self, parent_obj, attr_name: str, parent_context: str = None):
+        b = getattr(parent_obj, attr_name)
+        attr_list = [
+            "plane_phi",
+            "plane_distance",
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+        ]
+        length = None
+        for attr in attr_list:
+            self.validate_one_attr(b, attr, length)
+            length = len(b[attr])
+
+        for distance in b.plane_distance:
+            if distance < 0:
+                fatal(f"window_acceptance.plane_distance must be non-negative.")
+        for i in range(len(b.a1)):
+            if b.a1[i] >= b.a2[i]:
+                fatal(
+                    f"window_acceptance: a1[{i}] must be less than a2[{i}]. Got {b.a1[i]} >= {b.a2[i]}"
+                )
+            if b.b1[i] >= b.b2[i]:
+                fatal(
+                    f"window_acceptance: b1[{i}] must be less than b2[{i}]. Got {b.b1[i]} >= {b.b2[i]}"
                 )
 
 
@@ -408,6 +463,10 @@ class ScatterSplittingFreeFlightActor(
                 "doc": "Scattered photon will be limited to an angular acceptance. Several methods available, see XXX",
             },
         ),
+        "window_acceptance": (
+            default_window_acceptance(),
+            {"doc": "Scattered photon will be limited to a window acceptance."},
+        ),
         "kill_interacting_in_volumes": (
             [],
             {
@@ -434,6 +493,7 @@ class ScatterSplittingFreeFlightActor(
         SplitProcessActorBase.__init__(self, *args, **kwargs)
         self.__initcpp__()
         self._aa_validator = AngularAcceptanceValidator()
+        self._wa_validator = WindowAcceptanceValidator()
 
     def __initcpp__(self):
         g4.GateScatterSplittingFreeFlightOptrActor.__init__(self, {"name": self.name})
@@ -452,6 +512,7 @@ class ScatterSplittingFreeFlightActor(
         self.check_compatibility_with_generic_process()
         # Check the sub-parameters
         self._aa_validator.validate(self, "angular_acceptance")
+        self._wa_validator.validate(self, "window_acceptance")
         if self.user_info.compton_splitting_factor == -1:
             self.user_info.compton_splitting_factor = self.user_info.splitting_factor
         if self.user_info.rayleigh_splitting_factor == -1:
