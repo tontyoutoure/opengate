@@ -89,21 +89,6 @@ def build_crystal(sim, head, output_prefix, count_scatter=False):
         "TrackID",
         "PreStepUniqueVolumeID",
     ]
-    if count_scatter:
-        aux_compton = sim.activate_auxiliary_attribute(
-            "ProcessDefinedStepInVolumeAttribute", "compton_count"
-        )
-        aux_compton.volume_name = "phantom"
-        aux_compton.process_name = "compt"
-        hc.attributes.append(aux_compton.name)
-
-        aux_rayleigh = sim.activate_auxiliary_attribute(
-            "ProcessDefinedStepInVolumeAttribute", "rayleigh_count"
-        )
-        aux_rayleigh.volume_name = "phantom"
-        aux_rayleigh.process_name = "Rayl"
-        hc.attributes.append(aux_rayleigh.name)
-
     hc.attached_to = ["head_crystal"]
     hc.write_to_disk = False
     sc = sim.add_actor("DigitizerAdderActor", "Singles")
@@ -111,37 +96,22 @@ def build_crystal(sim, head, output_prefix, count_scatter=False):
     sc.policy = "EnergyWeightedCentroidPosition"
     sc.group_volume = "head_crystal"
     sc.output_filename = f"{output_prefix}_singles.root"
-    proj = sim.add_actor("DigitizerProjectionActor", "Projection")
-    proj.attached_to = "head_crystal"
-    proj.input_digi_collections = ["Singles"]
-    proj.spacing = [1.5 * mm, 1.5 * mm]
-    proj.size = [100, 100]
-    proj.origin_as_image_center = False
-    proj.output_filename = f"{output_prefix}.mhd"
-    proj.squared_counts.active = True
-    proj.detector_orientation_matrix = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
-
     if count_scatter:
-
-        sc_primary = sim.add_actor("DigitizerAdderActor", "SinglesPrimary")
-        sc_primary.input_digi_collection = "Hits"
-        sc_primary.policy = "EnergyWeightedCentroidPosition"
-        sc_primary.group_volume = "head_crystal"
-        sc_primary.output_filename = f"{output_prefix}_singles_primary.root"
-        F = gate.actors.filters.GateFilterBuilder()
-        filter_unscatter = (F.compton_count == 0) & (F.rayleigh_count == 0)
-        sc_primary.filter = filter_unscatter
-        proj_primary = sim.add_actor("DigitizerProjectionActor", "ProjectionPrimary")
-        proj_primary.attached_to = "head_crystal"
-        proj_primary.input_digi_collections = ["SinglesPrimary"]
-        proj_primary.spacing = [1.5 * mm, 1.5 * mm]
-        proj_primary.size = [100, 100]
-        proj_primary.origin_as_image_center = False
-        proj_primary.output_filename = f"{output_prefix}_primary.mhd"
-        proj_primary.squared_counts.active = True
-        proj_primary.detector_orientation_matrix = np.array(
-            [[1, 0, 0], [0, 0, -1], [0, 1, 0]]
+        aux = sim.activate_auxiliary_attribute(
+            "LastProcessDefinedStepInVolumeAttribute", "phantom_last_process"
         )
+        aux.volume_name = "phantom"
+        hc.attributes.append(aux.name)
+    else:
+        proj = sim.add_actor("DigitizerProjectionActor", "Projection")
+        proj.attached_to = "head_crystal"
+        proj.input_digi_collections = ["Singles"]
+        proj.spacing = [1.5 * mm, 1.5 * mm]
+        proj.size = [100, 100]
+        proj.origin_as_image_center = False
+        proj.output_filename = f"{output_prefix}.mhd"
+        proj.squared_counts.active = True
+        proj.detector_orientation_matrix = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
 
 
 def build_geometry(

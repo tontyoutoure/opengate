@@ -124,12 +124,12 @@ class AngularAcceptanceValidator(UserInfoValidatorBase):
 class WindowAcceptanceValidator(UserInfoValidatorBase):
     __schema__ = set(default_window_acceptance().keys())
 
-    def validate_one_attr(self, b, attr_name: str, len=None):
+    def validate_one_attr(self, b, attr_name: str, length=None):
         attr = b[attr_name]
         if not isinstance(attr, list):
             fatal(f"window_acceptance.{attr_name} must be a list.")
-        if len is not None and len(attr) != len:
-            fatal(f"window_acceptance.{attr_name} must be a list of length {len}.")
+        if length is not None and len(attr) != length:
+            fatal(f"window_acceptance.{attr_name} must be a list of length {length}.")
         for i, v in enumerate(attr):
             if not isinstance(v, (int, float, np.number)):
                 fatal(f"window_acceptance.{attr_name}[{i}] must be a numeric value.")
@@ -435,6 +435,7 @@ class ScatterSplittingFreeFlightActor(
     compton_splitting_factor: int
     rayleigh_splitting_factor: int
     angular_acceptance: Box
+    window_acceptance: Box
     kill_interacting_in_volumes: list
 
     # user info

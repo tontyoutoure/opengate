@@ -130,12 +130,52 @@ def run_window_turbo_source(ff=False, thread_count=4):
     print("-" * 80)
 
 
+def run_scatter_splitting_window_acceptance():
+    activity = 1000000
+    Bq = gate.g4_units.Bq
+    mm = gate.g4_units.mm
+
+    sim = initialize(3.125)
+    sim.g4_commands_before_init.append("/process/em/UseGeneralProcess false")
+    sim.random_seed = 1
+    build_geometry(sim, paths.output / "scatter_splitting", count_scatter=False)
+    add_phantom(sim)
+    sim.visu = False
+    sim.visu_type = "qt"
+    sim.number_of_threads = 4
+    source_back = sim.add_source("GenericSource", "source_back")
+    source_1 = sim.add_source("GenericSource", "source_1")
+    source_2 = sim.add_source("GenericSource", "source_2")
+    source_3 = sim.add_source("GenericSource", "source_3")
+    source_1.activity = activity * Bq
+    source_2.activity = activity * Bq
+    source_3.activity = activity * Bq
+    source_back.activity = activity * Bq
+    change_source_parameters(source_back, source_1, source_2, source_3)
+    ff = sim.add_actor("ScatterSplittingFreeFlightActor", "ff")
+    ff.attached_to = "world"  # Warning, if "phantom": cannot kill outside the phantom
+    ff.kill_interacting_in_volumes = ["head"]
+    ff.compton_splitting_factor = 4  # the value must have no effect
+    ff.rayleigh_splitting_factor = 4  # the value must have no effect
+    ff.max_compton_level = 1000  # count everything
+    ff.window_acceptance.plane_phi = [np.pi / 2]
+    ff.window_acceptance.plane_distance = [86 * mm]
+    ff.window_acceptance.a1 = [-13.6 * mm]
+    ff.window_acceptance.a2 = [13.6 * mm]
+    ff.window_acceptance.b1 = [-13.6 * mm]
+    ff.window_acceptance.b2 = [13.6 * mm]
+    sim.run(start_new_process=True)
+    stats = sim.get_actor("Stats")
+    print(stats)
+    print("-" * 80)
+
+
 def run_generic_source(job_count):
     for ijob in range(job_count):
         activity = 1000000
         Bq = gate.g4_units.Bq
 
-        sim = initialize(15.625)
+        sim = initialize(3.125)
         sim.random_seed = ijob + 1
         build_geometry(sim, f"generic_{ijob}", count_scatter=True)
 
@@ -143,7 +183,7 @@ def run_generic_source(job_count):
         add_phantom(sim)
         sim.visu = False
         sim.visu_type = "qt"
-        sim.number_of_threads = 32
+        sim.number_of_threads = 160
 
         # physic list
         # print('Phys lists :', sim.get_available_physicLists())
@@ -185,19 +225,8 @@ def generate_prj_one(path):
             return None, None
         tree = file["Singles"]
         tree_np = tree.arrays(library="np")
-        is_scatter = tree_np["compton_count"] + tree_np["rayleigh_count"] > 0
+        is_scatter = tree_np["phantom_last_process"] != "Transportation"
         keys = tree.keys()
-        print(keys)
-        print(
-            max(tree_np["compton_count"]),
-            min(tree_np["compton_count"]),
-            tree_np["compton_count"].mean(),
-        )
-        print(
-            max(tree_np["rayleigh_count"]),
-            min(tree_np["rayleigh_count"]),
-            tree_np["rayleigh_count"].mean(),
-        )
         x_scatter = tree_np["PostPosition_X"][is_scatter]
         z_scatter = tree_np["PostPosition_Z"][is_scatter]
         x_primary = tree_np["PostPosition_X"][~is_scatter]
@@ -216,16 +245,18 @@ def generate_prj_generic():
     import SimpleITK as sitk
 
     root_list = glob.glob("generic_*_singles.root")
+    print("Found", len(root_list), "files")
     output_prj_primary = np.zeros((100, 100))
     output_prj_scatter = np.zeros((100, 100))
     for ifile, filepath in enumerate(root_list):
+        print("Processing file:", filepath)
         prj_primary, prj_scatter = generate_prj_one(filepath)
         if prj_primary is None or prj_scatter is None:
             continue
         output_prj_primary += prj_primary
         output_prj_scatter += prj_scatter
-        if ifile > 1:
-            break
+        # if ifile > 1:
+        #     break
     image_output_primary = sitk.GetImageFromArray(output_prj_primary.astype(np.float32))
     image_output_scatter = sitk.GetImageFromArray(output_prj_scatter.astype(np.float32))
     image_output_primary.SetSpacing([1.5, 1.5])
@@ -236,23 +267,24 @@ def generate_prj_generic():
 
 if __name__ == "__main__":
     pathFile = pathlib.Path(__file__).parent.resolve()
-    # run_generic_source(50)
+    # run_generic_source(500)
     # generate_prj_generic()
     # run_window_turbo_source(True)
-    import sys
+    run_scatter_splitting_window_acceptance()
+    # import sys
 
-    run_window_turbo_source(bool(int(sys.argv[1])), int(sys.argv[2]))
+    # run_window_turbo_source(bool(int(sys.argv[1])), int(sys.argv[2]))
 
-    prj_primary, prj_scatter = generate_prj_one(
-        paths.output / "window_turbo_ff_False_singles.root"
-    )
-    image_primary = sitk.GetImageFromArray(prj_primary.astype(np.float32))
-    image_scatter = sitk.GetImageFromArray(prj_scatter.astype(np.float32))
-    image_primary.SetSpacing([1.5, 1.5])
-    image_scatter.SetSpacing([1.5, 1.5])
-    sitk.WriteImage(
-        image_primary, paths.output / "window_turbo_ff_False_primary_lazy_generated.mhd"
-    )
+    # prj_primary, prj_scatter = generate_prj_one(
+    #     paths.output / "window_turbo_ff_False_singles.root"
+    # )
+    # image_primary = sitk.GetImageFromArray(prj_primary.astype(np.float32))
+    # image_scatter = sitk.GetImageFromArray(prj_scatter.astype(np.float32))
+    # image_primary.SetSpacing([1.5, 1.5])
+    # image_scatter.SetSpacing([1.5, 1.5])
+    # sitk.WriteImage(
+    #     image_primary, paths.output / "window_turbo_ff_False_primary_lazy_generated.mhd"
+    # )
     # sitk.WriteImage(image_scatter, paths.output / "window_turbo_ff_False_scatter.mhd")
 
     # analyze_root(paths.output / "window_turbo_ff_singles.root")
