@@ -23,14 +23,10 @@ bool GateWindowAcceptanceManager::TestForOneWindow(
       momentum_direction.x() * cos_phi + momentum_direction.y() * sin_phi;
   G4double dir_y_rotated =
       -momentum_direction.x() * sin_phi + momentum_direction.y() * cos_phi;
-  G4String error_msg = fmt::format(
-      "position ({}, {}, {}) is outside the plane distance {} for window {}",
-      position.x(), position.y(), position.z(), fPlaneDistance[i], i);
 
   G4double pd = fPlaneDistance[i];
   if (pos_x_rotated >= pd) {
-    G4Exception("GateWindowAcceptanceManager::TestForOneWindow",
-                "OutOfWindowError", FatalException, error_msg);
+    return true; // Already passed the plane, accept
   }
 
   G4double intersect_a =

@@ -58,7 +58,7 @@ def initialize(duration=10):
     sim.physics_manager.global_production_cuts.all = 1 * gate.g4_units.mm
     # main options
     sim.g4_verbose = False
-    sim.g4_verbose_level = 1
+    sim.g4_verbose_level = 0
     sim.visu = False
     sim.visu_type = "qt"
     sim.number_of_threads = 32
@@ -90,7 +90,7 @@ def run_window_turbo_source(ff=False, thread_count=4):
     if ff:
         sim.g4_commands_before_init.append("/process/em/UseGeneralProcess false")
     sim.g4_verbose = False
-    sim.number_of_threads = thread_count
+    sim.number_of_threads = 1
     sim.random_seed = 1
     sim.progress_bar = False
     radius_down = 13.6
@@ -131,18 +131,23 @@ def run_window_turbo_source(ff=False, thread_count=4):
 
 
 def run_scatter_splitting_window_acceptance():
-    activity = 1000000
+    activity = 1e6
     Bq = gate.g4_units.Bq
     mm = gate.g4_units.mm
+    m = gate.g4_units.m
 
     sim = initialize(3.125)
+    # sim = initialize(0)
     sim.g4_commands_before_init.append("/process/em/UseGeneralProcess false")
+    # sim.g4_commands_before_init.append("/control/exception/maxTotalExceptionWarning 0")
+    sim.physics_manager.set_production_cut("world", "all", 100 * m)
+    sim.physics_manager.set_production_cut("phantom", "all", 1 * mm)
     sim.random_seed = 1
     build_geometry(sim, paths.output / "scatter_splitting", count_scatter=False)
     add_phantom(sim)
     sim.visu = False
     sim.visu_type = "qt"
-    sim.number_of_threads = 4
+    sim.number_of_threads = 160
     source_back = sim.add_source("GenericSource", "source_back")
     source_1 = sim.add_source("GenericSource", "source_1")
     source_2 = sim.add_source("GenericSource", "source_2")
@@ -154,7 +159,8 @@ def run_scatter_splitting_window_acceptance():
     change_source_parameters(source_back, source_1, source_2, source_3)
     ff = sim.add_actor("ScatterSplittingFreeFlightActor", "ff")
     ff.attached_to = "world"  # Warning, if "phantom": cannot kill outside the phantom
-    ff.kill_interacting_in_volumes = ["head"]
+    ff.kill_interacting_in_volumes = ["head_crystal"]
+    ff.exclude_volumes = ["head"]
     ff.compton_splitting_factor = 4  # the value must have no effect
     ff.rayleigh_splitting_factor = 4  # the value must have no effect
     ff.max_compton_level = 1000  # count everything
@@ -168,6 +174,8 @@ def run_scatter_splitting_window_acceptance():
     stats = sim.get_actor("Stats")
     print(stats)
     print("-" * 80)
+    print("Info during splitting")
+    print(ff)
 
 
 def run_generic_source(job_count):
