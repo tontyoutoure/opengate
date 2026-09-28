@@ -43,6 +43,7 @@ from .sources.lastvertexsources import LastVertexSource
 from .sources.phidsources import PhotonFromIonDecaySource
 from .sources.windowturbosource import WindowTurboSource
 from .sources.voxelwtsource import VoxelWTSource
+from .sources.windowfdsource import WindowFDSource
 from .sources.phspsources import PhaseSpaceSource
 from .sources.voxelsources import VoxelizedPromptGammaTLESource, VoxelSource
 from .utility import (
@@ -67,6 +68,7 @@ source_types = {
     "TreatmentPlanPBSource": TreatmentPlanPBSource,
     "VoxelizedPromptGammaTLESource": VoxelizedPromptGammaTLESource,
     "WindowTurboSource": WindowTurboSource,
+    "WindowFDSource": WindowFDSource,
     "VoxelWTSource": VoxelWTSource,
 }
 
