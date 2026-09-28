@@ -6,9 +6,6 @@
    -------------------------------------------------- */
 
 #include "GateSingleParticleSourceWindowFD.h"
-#include "G4Threading.hh"
-#include "GateHelpersDict.h"
-#include "Randomize.hh"
 #include <G4Event.hh>
 #include <G4PrimaryParticle.hh>
 #include <G4PrimaryVertex.hh>
@@ -55,15 +52,19 @@ G4bool GateSingleParticleSourceWindowFD::CheckPosDirValid(
 }
 
 void GateSingleParticleSourceWindowFD::GeneratePosDir() {
+  if (fPosDirGenerated) {
+    return;
+  }
   fSkippedCount = 0;
   while (true) {
     fCurrentPos = fPositionGenerator->VGenerateOne();
     fCurrentDir = fDirectionGenerator->VGenerateOne();
+    fSkippedCount++;
     if (CheckPosDirValid(fCurrentPos, fCurrentDir)) {
       break;
     }
-    fSkippedCount++;
   }
+  fPosDirGenerated = true;
 }
 
 void GateSingleParticleSourceWindowFD::GeneratePrimaryVertex(G4Event *event) {
@@ -87,4 +88,5 @@ void GateSingleParticleSourceWindowFD::GeneratePrimaryVertex(G4Event *event) {
   // set vertex
   vertex->SetPrimary(particle);
   event->AddPrimaryVertex(vertex);
+  fPosDirGenerated = false;
 }

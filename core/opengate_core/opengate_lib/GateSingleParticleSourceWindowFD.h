@@ -42,6 +42,7 @@ private:
   G4ThreeVector fCurrentDir;
   G4ThreeVector fCurrentPos;
   G4long fSkippedCount;
+  G4bool fPosDirGenerated{false};
   //   G4bool fPosGenerated = false;
 };
 
