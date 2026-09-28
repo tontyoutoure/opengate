@@ -78,8 +78,5 @@ private:
                        G4ThreeVector &pos3, G4ThreeVector &pos4,
                        int run_id) const;
 
-  void PrepareSharedBeforeRun();
-  void InitializeSharedCache(py::dict &user_info);
-  void WriteBackUserInfo();
   py::dict fUserInfo; // to write back act ratio and max solid angle
 };

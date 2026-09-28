@@ -109,26 +109,6 @@ class WFDSDirectionValidator(UserInfoValidatorBase):
                 fatal(
                     f"'plane_phi' must be in the range [0, np.pi * 2) in '{self.context_name}'."
                 )
-        if not self.is_integer(b.init_sampling_count) or b.init_sampling_count <= 0:
-            fatal(f"'init_sampling_count' must be positive in '{self.context_name}'.")
-
-        if b.init_number_of_threads == 0:
-            b.init_number_of_threads = self.simulation.number_of_threads
-            logger.debug(
-                f"'init_number_of_threads' is set to the number of CPU cores: {b.init_number_of_threads}."
-            )
-
-        if (
-            not self.is_integer(b.init_number_of_threads)
-            or b.init_number_of_threads < 0
-            or b.init_number_of_threads > os.cpu_count()
-        ):
-            warning(
-                f"'init_number_of_threads' must be a positive integer less than or equal to the number of CPU cores. Setting it to {os.cpu_count()}."
-            )
-
-        if not isinstance(b.skip_mode, bool):
-            fatal(f"'skip_mode' must be a boolean in '{self.context_name}'.")
 
 
 class WFDSVisualizationValidator(VisualizationValidator):
@@ -222,7 +202,6 @@ class WindowFDSource(GenericSource):
 
     def create_g4_source(self):
         g4_source = g4.GateWindowFDSource()
-        g4_source.SetSharedCache(self._g4_shared_cache)
         return g4_source
 
     def initialize_g4_source(self, g4_source, run_timing_intervals):

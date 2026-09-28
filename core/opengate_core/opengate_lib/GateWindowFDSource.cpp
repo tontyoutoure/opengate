@@ -101,7 +101,6 @@ void GateWindowFDSource::InitializeDirection(py::dict puser_info) {
     fPlaneDistance = DictGetVecDouble(user_info, "plane_distance");
     fPlanePhi = DictGetVecDouble(user_info, "plane_phi");
   }
-  InitializeSharedCache(user_info);
 
   if (fAAManager == nullptr) {
     fAAManager = new GateAcceptanceAngleManager;
