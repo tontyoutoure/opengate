@@ -59,11 +59,29 @@ def initialize(duration=10):
     sim.g4_verbose_level = 1
     sim.visu = False
     sim.visu_type = "qt"
-    sim.number_of_threads = 32
+    sim.number_of_threads = 4
     sim.progress_bar = True
     sim.run_timing_intervals = [[0, duration * sec]]
     sim.add_actor("SimulationStatisticsActor", "Stats")
     return sim
+
+
+def set_wt_direction(
+    source, radius_down, plane_distance=86 * gate.g4_units.mm, plane_phi=np.pi / 2
+):
+    mm = gate.g4_units.mm
+    source.direction.a1 = -radius_down * mm
+    source.direction.a2 = radius_down * mm
+    source.direction.b1 = -radius_down * mm
+    source.direction.b2 = radius_down * mm
+    source.direction.plane_distance = plane_distance
+    source.direction.plane_phi = plane_phi
+
+
+def write_duration(sim, act, file):
+    stats = sim.get_actor("Stats").user_output.stats.merged_data
+    with open(file, "a") as f:
+        f.write(f"[{act}, {stats['duration']/1e9}],\n")
 
 
 def run_window_turbo_source(activity=1000000):
@@ -84,20 +102,18 @@ def run_window_turbo_source(activity=1000000):
     source_2.activity = activity * Bq
     source_3.activity = activity * Bq
     source_back.activity = activity * Bq
-    source_back.direction.a1 = -radius_down * mm
-    source_back.direction.a2 = radius_down * mm
-    source_back.direction.b1 = -radius_down * mm
-    source_back.direction.b2 = radius_down * mm
-    source_back.direction.plane_distance = 86 * mm
-    source_back.direction.plane_phi = np.pi / 2
-    source_2.direction = source_back.direction.copy()
-    source_3.direction = source_back.direction.copy()
-    source_1.direction = source_back.direction.copy()
+    set_wt_direction(source_back, radius_down)
+    set_wt_direction(source_1, radius_down)
+    set_wt_direction(source_2, radius_down)
+    set_wt_direction(source_3, radius_down)
     change_source_parameters(source_back, source_1, source_2, source_3)
     sim.run()
-    stats = sim.get_actor("Stats")
-    print(stats)
-    print("-" * 80)
+    # stats = sim.get_actor("Stats").user_output.stats.merged_data
+    # print(stats)
+    # print("-" * 80)
+    # with open(paths.output / "window_turbo_duration.txt", "a") as f:
+    #     f.write(f"act:{activity}, duration:{stats['duration']/1e9}\n")
+    write_duration(sim, activity, paths.output / "window_turbo_duration.txt")
 
 
 def run_window_fd_source(activity=1000000):
@@ -129,15 +145,13 @@ def run_window_fd_source(activity=1000000):
     source_1.direction = source_back.direction.copy()
     change_source_parameters(source_back, source_1, source_2, source_3)
     sim.run()
-    stats = sim.get_actor("Stats")
-    print(stats)
-    print("-" * 80)
+    write_duration(sim, activity, paths.output / "window_fd_duration.txt")
 
 
 def run_generic_source(activity=1000000):
     Bq = gate.g4_units.Bq
 
-    sim = initialize()
+    sim = initialize(80)
     build_geometry(sim, "generic")
 
     # physic list
@@ -155,23 +169,46 @@ def run_generic_source(activity=1000000):
 
     sim.run()
 
-    stats = sim.get_actor("Stats")
-    print(stats)
-    print("-" * 80)
+    write_duration(sim, activity, paths.output / "generic_duration.txt")
 
+
+from multiprocessing import Process
+import subprocess
 
 if __name__ == "__main__":
     pathFile = pathlib.Path(__file__).parent.resolve()
-    # run_generic_source()
-    # run_window_turbo_source()
-    run_window_fd_source()
-    profile_wt = calculate_profile(paths.output / "window_turbo_counts.mhd")
-    profile_generic = calculate_profile(paths.output_ref / "generic.mhd")
-    compare_result = compare_profiles(
-        profile_generic,
-        profile_wt,
-        tolerance=4.0,
-        fig_name=paths.output / "profile_comparison.png",
-    )
 
-    utility.test_ok(compare_result)
+    # for e in range(8,20):
+    #     act = 10**(e/2)
+    #     p = Process(target=run_window_turbo_source, args=(act,))
+    #     p.start()
+    #     p.join()
+
+    # for e in range(13):
+    for e in [12]:
+        act = 10 ** (e / 2)
+        p3 = Process(target=run_generic_source, args=(act,))
+        p3.start()
+        p3.join()
+        # p2 = Process(target=run_window_fd_source, args=(act,))
+        # p2.start()
+        # p2.join()
+        subprocess.run(["/home/likun/bin/send_dingtalk.sh", f"done {act}", "lk"])
+
+    # p2 = Process(target=run_window_fd_source)
+    # p2.start()
+    # p2.join()
+    # p1 = Process(target=run_window_turbo_source)
+    # p1.start()
+    # p1.join()
+    # run_window_fd_source()
+    # profile_wt = calculate_profile(paths.output / "window_turbo_counts.mhd")
+    # profile_wfd = calculate_profile(paths.output / "window_fd_counts.mhd")
+    # compare_result = compare_profiles(
+    #     profile_wt,
+    #     profile_wfd,
+    #     tolerance=4.0,
+    #     fig_name=paths.output / "profile_comparison_wt_wfd.png",
+    # )
+
+    # utility.test_ok(compare_result)
