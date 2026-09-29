@@ -90,21 +90,21 @@ def create_simulation(paths, num_threads):
     ]
 
     # Singles
-    sc = sim.add_actor("DigitizerAdderActor", "Singles_before_pileup")
+    sc = sim.add_actor("DigitizerAdderActor", "Singles_before_deadtime")
     sc.attached_to = hc.attached_to
     sc.authorize_repeated_volumes = True
     sc.input_digi_collection = hc.name
     sc.policy = "EnergyWinnerPosition"
     sc.output_filename = root_filename
 
-    # Pile-up
-    pu = sim.add_actor("DigitizerPileupActor", "Singles_after_pileup")
-    pu.input_digi_collection = sc.name
-    pu.group_volume = crystal.name
-    pu.authorize_repeated_volumes = True
-    pu.time_window = 2000.0 * ns
-    pu.clear_every = 1e4
-    pu.output_filename = root_filename
+    # Dead time
+    dt = sim.add_actor("DigitizerDeadTimeActor", "Singles_after_deadtime")
+    dt.input_digi_collection = sc.name
+    dt.group_volume = crystal.name
+    dt.authorize_repeated_volumes = True
+    dt.dead_time = 2000.0 * ns
+    dt.clear_every = 1e4
+    dt.output_filename = root_filename
 
     # Timing
     run_duration = 0.0005 * sec
@@ -113,4 +113,4 @@ def create_simulation(paths, num_threads):
         [2 * r * run_duration, (2 * r + 1) * run_duration] for r in range(num_runs)
     ]
 
-    return (sim, pu, root_filename)
+    return (sim, dt, root_filename)
