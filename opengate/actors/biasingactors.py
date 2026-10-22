@@ -70,7 +70,7 @@ def default_window_acceptance():
     return Box(
         {
             "plane_phi": [],
-            "plane_theta": [],
+            "plane_distance": [],
             "a1": [],
             "a2": [],
             "b1": [],
